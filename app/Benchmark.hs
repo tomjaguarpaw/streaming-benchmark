@@ -113,20 +113,14 @@ benchmarkNoPlot bps algorithms logMaxSize = do
 
       let treeSize = round ((1.1 :: Double) ** fromIntegral logSize)
 
-      -- We force the expression after generating it.  The Expr type
-      -- is strict, that is forcing it forces everything it contains,
-      -- therefore no time is wasted forcing it in the hashing
-      -- algorithm itself.  On the other hand adding this bang pattern
-      -- made absolutely no difference to the benchmarks.  Presumably
-      -- the expression is generated already in forced state.  But
-      -- it's nice to keep this here for clarity.
-
       putStrLn ("Algorithm "
                  ++ show i ++ "/" ++ show (length algorithms)
                  ++ " (" ++ algorithmName ++ ")")
-      putStrLn ("Generating expression ...")
+      -- We force the tree after generating it.  leftSkewed returns a
+      -- fully-evaluated tree, that is forcing it forces everything it
+      -- contains, therefore no time is wasted forcing it in the
+      -- algorithm itself.
       let !tree = Tree.leftSkewed treeSize
-      putStrLn ("done.  Size was " ++ show treeSize)
 
       let minimumMeasureableTime_micro = minimumMeasurableTime_secs bps * 1000 * 1000
 
@@ -184,41 +178,26 @@ stats (n, tsum, tsquaredsum, tmin) = (n, mean, tmin, variance, stddev)
         variance = tsquaredsum / n' - mean * mean
         stddev   = sqrt variance
 
--- This is probably the entry point you want to use to benchmark an
--- algorithm on a list of expressions each read from a FilePath.
---
--- Runs algorithm on expression and produces aggregate timing
--- statistics.
---
--- benchmarkOne will seq the result of `algorithm expression`.  It is
--- the caller's responsibility to ensure that this causes *all*
--- desired work to be performed.  If you're not sure on this point
--- please ask the author.
-benchmarkOne :: Int
-             -> Integer
-             -> (e -> IO r)
-             -> e
-             -> IO AggregateStatistics
-benchmarkOne = benchmarkMore (0, 0, 0, infinity)
-  where infinity = 1e60
+time_nano :: Int -> (a -> IO r) -> a -> IO Integer
+time_nano n f x = do
+  System.Mem.performMajorGC
+  start <- Clock.getTime Clock.Monotonic
+  times n () $ \() -> f x >> pure ()
+  stop <- Clock.getTime Clock.Monotonic
+  pure (Clock.toNanoSecs (Clock.diffTimeSpec stop start))
 
 benchmarkMore :: AggregateStatistics
               -> Int
-              -> Integer
+              -> Int
               -> (e -> IO r)
               -> e
               -> IO AggregateStatistics
 benchmarkMore already samplesPerExpression iterationsPerSample algorithm expression =
   times samplesPerExpression already $ \(n, !t, !tsquared, !minSoFar) -> do
-        System.Mem.performMajorGC
-        start <- Clock.getTime Clock.Monotonic
-        times iterationsPerSample () $ \() -> algorithm expression >> pure ()
-        stop <- Clock.getTime Clock.Monotonic
+        iterationsElapsed_nano <- time_nano iterationsPerSample algorithm expression 
 
         let elapsed_micro = iterationsElapsed_micro / fromIntegral iterationsPerSample
-              where iterationsElapsed = Clock.diffTimeSpec stop start
-                    iterationsElapsed_nano = Clock.toNanoSecs iterationsElapsed
-                    iterationsElapsed_micro = fromIntegral iterationsElapsed_nano / 1e3
+              where iterationsElapsed_micro = fromIntegral iterationsElapsed_nano / 1e3
 
         return (n + 1,
                 t + elapsed_micro,
@@ -226,20 +205,14 @@ benchmarkMore already samplesPerExpression iterationsPerSample algorithm express
                 min minSoFar elapsed_micro)
 
 benchmarkUntil :: Double
-               -> Integer
+               -> Int
                -> (e -> IO r)
                -> e
-               -> IO (Integer, AggregateStatistics)
+               -> IO (Int, AggregateStatistics)
 benchmarkUntil minimumMeasurableTime_micro repeats f x = do
-  System.Mem.performMajorGC
-  start <- Clock.getTime Clock.Monotonic
-  times repeats () $ \() -> f x >> pure ()
-  stop <- Clock.getTime Clock.Monotonic
+  iterationsElapsed_nano <- time_nano repeats f x
 
   let iterationsElapsed_micro = fromIntegral iterationsElapsed_nano / 1e3
-        where iterationsElapsed = Clock.diffTimeSpec stop start
-              iterationsElapsed_nano = Clock.toNanoSecs iterationsElapsed
-
       elapsed_micro = iterationsElapsed_micro / fromIntegral repeats
 
   if iterationsElapsed_micro < minimumMeasurableTime_micro
