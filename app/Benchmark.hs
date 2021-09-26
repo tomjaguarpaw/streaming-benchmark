@@ -24,13 +24,13 @@ data BenchmarkParams = BenchmarkParams
   }
 
 data Algorithms a = Algorithms
-  { aList            :: a
+  { aPipes           :: a
+  , aConduit         :: a
+  , aList            :: a
   , aStreaming       :: a
+  , aStreamly        :: a
   , aStreamingBetter :: a
   , aIO              :: a
-  , aStreamly        :: a
-  , aPipes           :: a
-  , aConduit         :: a
   }
   deriving (Functor, Foldable, Traversable)
 
