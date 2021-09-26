@@ -1,5 +1,6 @@
--- Copyright (c) Microsoft Corporation.
--- MIT License
+-- Copyright (c) Tom Ellis
+--
+-- Contains code Copyright (c) Microsoft Corporation MIT License
 
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE BangPatterns #-}
@@ -9,7 +10,6 @@ module Benchmark where
 
 import qualified Data.Foldable
 import Data.List (intercalate)
---import qualified GHC.Stats
 import qualified System.Clock as Clock
 import Text.Printf (printf)
 import System.IO.Temp (createTempDirectory, emptyTempFile)
@@ -33,8 +33,8 @@ data Algorithms a = Algorithms
 
 algorithms_ :: Algorithms (String, Tree.Tree -> IO (), String)
 algorithms_ = Algorithms
-  { aList            = ("List", Tree.printTreeList, veryBad)
-  , aStreaming       = ("Streaming", Tree.printTreeStreaming, prettyBad)
+  { aStreaming       = ("Streaming", Tree.printTreeStreaming, prettyBad)
+  , aList            = ("List", Tree.printTreeList, veryBad)
   , aStreamingBetter = ("Streaming better", Tree.printTreeBetterStreaming, good)
   , aIO              = ("IO", Tree.printTreeIO, baseline)
   }
@@ -43,7 +43,6 @@ algorithms_ = Algorithms
       prettyBad = "orange"
       good      = "web-green"
       baseline  = "web-blue"
-      --paper     = "purple"
 
 fast :: BenchmarkParams
 fast = BenchmarkParams
@@ -84,14 +83,13 @@ benchmark bps = do
           , pdSize  = "0.25"
           }
 
-    makeGnuplot benchmarksDir "No name" datasets
+    makeGnuplot benchmarksDir datasets
 
 benchmarkResults :: Int
                  -> BenchmarkParams
                  -> IO [[((String, String), [(Int, Double)])]]
 benchmarkResults maxSize bps = do
   let algorithms = Data.Foldable.toList algorithms_
-  print $ fmap (\(x, _, _) -> x) algorithms
   results <- benchmarkNoPlot bps algorithms maxSize
   pure [results]
 
@@ -104,7 +102,7 @@ benchmarkNoPlot bps algorithms logMaxSize = do
     let (algorithmName, algorithm, algorithmExtra) = algorithm_
     results <- loop (iteratorOfList [60..logMaxSize]) [] $ \logSize rest -> do
 
-      let size = round ((1.1 :: Double) ** fromIntegral logSize)
+      let treeSize = round ((1.1 :: Double) ** fromIntegral logSize)
 
       -- We force the expression after generating it.  The Expr type
       -- is strict, that is forcing it forces everything it contains,
@@ -118,9 +116,8 @@ benchmarkNoPlot bps algorithms logMaxSize = do
                  ++ show i ++ "/" ++ show (length algorithms)
                  ++ " (" ++ algorithmName ++ ")")
       putStrLn ("Generating expression ...")
-      let !tree = Tree.leftSkewed size
-      let !exprSize' = size
-      putStrLn ("done.  Size was " ++ show exprSize')
+      let !tree = Tree.leftSkewed treeSize
+      putStrLn ("done.  Size was " ++ show treeSize)
 
       let minimumMeasureableTime_micro = minimumMeasurableTime_secs bps * 1000 * 1000
 
@@ -145,19 +142,19 @@ benchmarkNoPlot bps algorithms logMaxSize = do
 
       let done = tmin_micro > maximumTime_micro bps
           tmin_secs = tmin_micro / (1000 * 1000)
-          rest' = (exprSize', tmin_secs):rest
+          rest' = (treeSize, tmin_secs):rest
 
       pure $ (if done then Right else Left) rest'
 
     pure ((algorithmName, algorithmExtra), results)
 
-makeGnuplot :: FilePath -> String -> [PlotDataset] -> IO ()
-makeGnuplot benchmarksDir xlabel results = do
+makeGnuplot :: FilePath -> [PlotDataset] -> IO ()
+makeGnuplot benchmarksDir results = do
   gnuplotFilename <- emptyTempFile benchmarksDir "benchmarks.gnuplot"
   gnuplotPdfFilename <- emptyTempFile benchmarksDir "benchmarks-pdf.gnuplot"
 
-  let gnuplotFileContent = gnuplotFile xlabel results
-      (outputPdf, gnuplotPdfFileContent) = gnuplotFilePdf benchmarksDir xlabel results
+  let gnuplotFileContent = gnuplotFile results
+      (outputPdf, gnuplotPdfFileContent) = gnuplotFilePdf benchmarksDir results
 
   writeFile gnuplotFilename gnuplotFileContent
   writeFile gnuplotPdfFilename gnuplotPdfFileContent
@@ -242,20 +239,19 @@ benchmarkUntil minimumMeasurableTime_micro repeats f x = do
              (1, elapsed_micro, elapsed_micro * elapsed_micro, elapsed_micro))
 
 gnuplotFilePdf :: String
-               -> String
                -> [PlotDataset]
                -> (String, String)
-gnuplotFilePdf benchmarksDir xlabel results = (outputPdf, unlines [
+gnuplotFilePdf benchmarksDir results = (outputPdf, unlines [
     "set terminal pdf font \"Helvetica,13\""
   , "set output \"" ++ outputPdf ++ "\""
-  , gnuplotFile xlabel results
+  , gnuplotFile results
   ])
   where outputPdf = benchmarksDir ++ "/benchmark.pdf"
 
-gnuplotFile :: String -> [PlotDataset] -> String
-gnuplotFile xlabel results =
-  unlines [ "set xlabel \"Number of nodes in expression (" ++ xlabel ++ ")\""
-          , "set ylabel \"Time taken to hash all subexpressions (s)"
+gnuplotFile :: [PlotDataset] -> String
+gnuplotFile results =
+  unlines [ "set xlabel \"Number of nodes in tree\""
+          , "set ylabel \"Time taken to print tree (s)"
           , "set format y '%.0se%S'"
           , "set format x '%.0se%S'"
 --          , "set size 1,1"
@@ -283,16 +279,6 @@ plotDataset pd = intercalate " " [ quote (pdFile pd)
                                  , "pt " ++ pdStyle pd
                                  , "ps " ++ pdSize pd ]
   where quote s = "\"" ++ s ++ "\""
-
--- We apply the argument to the function here.  If we do it at the
--- call site then GHC may float it outside of the timing loop!
--- Therefore it's important that this function not be inlined.
--- It seems it's also important for it to return IO so as not to be
--- floated outside the timing loop.
-{-# NOINLINE evaluate #-}
-evaluate :: (e -> a) -> e -> IO ()
-evaluate a e = let !_ = a e
-                     in return ()
 
 times :: (Ord a, Num a, Monad m) => a -> s -> (s -> m s) -> m s
 times n s f = times_f 0 s
@@ -327,6 +313,3 @@ iteratorOfList :: Applicative m => [a] -> Iterator m a
 iteratorOfList = \case
   []   -> Iterator (pure Nothing)
   x:xs -> Iterator (pure (Just (x, iteratorOfList xs)))
-
-iteratorPure :: Applicative m => a -> Iterator m a
-iteratorPure a = Iterator (pure (Just (a, Iterator (pure Nothing))))
