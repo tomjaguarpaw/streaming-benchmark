@@ -55,15 +55,15 @@ algorithms_ = Algorithms
 
 fast :: BenchmarkParams
 fast = BenchmarkParams
-  { runsToMinimizeOver = 5
-  , minimumMeasurableTime_secs = 0.01
-  , maximumTime_micro = 1000 * 1000
+  { runsToMinimizeOver = 3
+  , minimumMeasurableTime_secs = 0.001
+  , maximumTime_micro = 5 * 1000
   }
 
 full :: BenchmarkParams
 full = BenchmarkParams
-  { runsToMinimizeOver = 10
-  , minimumMeasurableTime_secs = 0.1
+  { runsToMinimizeOver = 5
+  , minimumMeasurableTime_secs = 0.01
   , maximumTime_micro = 1000 * 1000
   }
 

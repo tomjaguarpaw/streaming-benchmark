@@ -8,4 +8,4 @@ module Main where
 import Benchmark
 
 main :: IO ()
-main = Benchmark.benchmark Benchmark.fast
+main = Benchmark.benchmark Benchmark.full
