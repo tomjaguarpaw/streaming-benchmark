@@ -8,11 +8,9 @@
 module Benchmark where
 
 import qualified Data.Foldable
-import Data.Function (fix)
 import Data.List (intercalate)
 --import qualified GHC.Stats
 import qualified System.Clock as Clock
-import Text.Read (readMaybe)
 import Text.Printf (printf)
 import System.IO.Temp (createTempDirectory, emptyTempFile)
 import qualified System.Mem
@@ -23,23 +21,22 @@ data BenchmarkParams = BenchmarkParams
   { runsToMinimizeOver :: Int
   , minimumMeasurableTime_secs :: Double
   , maximumTime_micro :: Double
-  , sizeScale :: Double
   }
 
 data Algorithms a = Algorithms
-  { aIO              :: a
-  , aList            :: a
+  { aList            :: a
   , aStreaming       :: a
   , aStreamingBetter :: a
+  , aIO              :: a
   }
   deriving (Functor, Foldable, Traversable)
 
 algorithms_ :: Algorithms (String, Tree.Tree -> IO (), String)
 algorithms_ = Algorithms
-  { aIO              = ("IO", Tree.printTreeIO, baseline)
-  , aList            = ("List", Tree.printTreeList, good)
+  { aList            = ("List", Tree.printTreeList, veryBad)
   , aStreaming       = ("Streaming", Tree.printTreeStreaming, prettyBad)
-  , aStreamingBetter = ("Streaming better", Tree.printTreeBetterStreaming, veryBad)
+  , aStreamingBetter = ("Streaming better", Tree.printTreeBetterStreaming, good)
+  , aIO              = ("IO", Tree.printTreeIO, baseline)
   }
   where
       veryBad   = "red"
@@ -53,7 +50,6 @@ fast = BenchmarkParams
   { runsToMinimizeOver = 5
   , minimumMeasurableTime_secs = 0.01
   , maximumTime_micro = 1000 * 1000
-  , sizeScale = 2
   }
 
 full :: BenchmarkParams
@@ -61,7 +57,6 @@ full = BenchmarkParams
   { runsToMinimizeOver = 10
   , minimumMeasurableTime_secs = 0.1
   , maximumTime_micro = 1000 * 1000
-  , sizeScale = 1.1
   }
 
 -- | This is the entry point to the module.  When run it will
@@ -73,7 +68,7 @@ benchmark bps = do
   benchmarksDir <- createTempDirectory "." "benchmarks"
   results_genNames <- benchmarkResults 80 bps
   flip mapM_ results_genNames $ \results' -> do
-    datasets <- flip mapM results' $ \((algorithmName, _, algorithmColor), results) -> do
+    datasets <- flip mapM results' $ \((algorithmName, algorithmColor), results) -> do
         let textOutput = flip concatMap results $ \(size, time) ->
               show size ++ " " ++  show time ++ "\n"
 
@@ -93,25 +88,23 @@ benchmark bps = do
 
 benchmarkResults :: Int
                  -> BenchmarkParams
-                 -> IO [[((String, Tree.Tree -> IO (), String),
-                          [(Int, Double)])]]
+                 -> IO [[((String, String), [(Int, Double)])]]
 benchmarkResults maxSize bps = do
   let algorithms = Data.Foldable.toList algorithms_
+  print $ fmap (\(x, _, _) -> x) algorithms
   results <- benchmarkNoPlot bps algorithms maxSize
   pure [results]
 
 benchmarkNoPlot :: BenchmarkParams
                 -> [(String, Tree.Tree -> IO (), string)]
                 -> Int
-                -> IO [((String, Tree.Tree -> IO (), string), [(Int, Double)])]
+                -> IO [((String, string), [(Int, Double)])]
 benchmarkNoPlot bps algorithms logMaxSize = do
-  let allParams = algorithms
+  flip mapM (enumFrom1 algorithms) $ \(i, algorithm_) -> do
+    let (algorithmName, algorithm, algorithmExtra) = algorithm_
+    results <- loop (iteratorOfList [60..logMaxSize]) [] $ \logSize rest -> do
 
-  flip mapM (enumFrom1 allParams) $ \(i, algorithm_) -> do
-    let (algorithmName, algorithm, _) = algorithm_
-    results <- loop (iteratorOfList [60..logMaxSize]) [] $ \logMaxSize rest -> do
-
-      let size = round (1.1 ** fromIntegral logMaxSize)
+      let size = round ((1.1 :: Double) ** fromIntegral logSize)
 
       -- We force the expression after generating it.  The Expr type
       -- is strict, that is forcing it forces everything it contains,
@@ -121,8 +114,8 @@ benchmarkNoPlot bps algorithms logMaxSize = do
       -- the expression is generated already in forced state.  But
       -- it's nice to keep this here for clarity.
 
-      putStrLn ("Parameter set "
-                 ++ show i ++ "/" ++ show (length allParams)
+      putStrLn ("Algorithm "
+                 ++ show i ++ "/" ++ show (length algorithms)
                  ++ " (" ++ algorithmName ++ ")")
       putStrLn ("Generating expression ...")
       let !tree = Tree.leftSkewed size
@@ -156,7 +149,7 @@ benchmarkNoPlot bps algorithms logMaxSize = do
 
       pure $ (if done then Right else Left) rest'
 
-    pure (algorithm_, results)
+    pure ((algorithmName, algorithmExtra), results)
 
 makeGnuplot :: FilePath -> String -> [PlotDataset] -> IO ()
 makeGnuplot benchmarksDir xlabel results = do
