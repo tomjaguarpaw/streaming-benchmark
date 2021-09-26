@@ -6,8 +6,9 @@
 module Tree where
 
 import qualified System.IO as IO
-import qualified Streaming.Prelude
+import qualified Streaming
 import           Control.Monad ((>=>))
+import           Control.Monad.Trans.Class (lift, MonadTrans)
 
 data Tree = Branch Tree Tree | Leaf Int
 
@@ -41,18 +42,34 @@ instance (Functor f, Monad m) => Monad (Stream f m) where
   (>>) = (*>)
 
   stream >>= f = Bind stream f
-{-
-    loop stream where
-    loop stream0 = case stream0 of
-      Step fstr -> Step (fmap loop fstr)
-      Effect m  -> Effect (fmap loop m)
-      Return r  -> f r
--}
+
+instance Functor f => MonadTrans (Stream f) where
+  lift = Effect . fmap Return
 
 data Of a b = !a :> b deriving Functor
 
 yield :: Monad m => a -> Stream (Of a) m ()
 yield a = Step (a :> Return ())
+
+{-| Run the effects in a stream that merely layers effects.
+-}
+run :: Monad m => Stream m m r -> m r
+run = loop where
+  loop stream = case stream of
+    Return r   -> return r
+    Effect  m  -> m >>= loop
+    Step mrest -> mrest >>= loop
+    Bind (Return n) k -> loop (k n)
+    Bind (Effect m) k -> do
+      r <- m
+      loop (Bind r k)
+    Bind (Step mrest) k -> do
+      r <- mrest
+      loop (Bind r k)
+    Bind (Bind m k1) k2 -> loop (Bind m (k1 >=> k2))
+
+printStdErr :: Show a => a -> IO ()
+printStdErr = IO.hPutStrLn IO.stderr . show
 
 mapM_ :: Monad m => (a -> m x) -> Stream (Of a) m r -> m r
 mapM_ f = loop where
@@ -74,27 +91,29 @@ leftSkewed n = (Branch $! leftSkewed (n - 1)) (Leaf n)
 
 printTreeIO :: Tree -> IO ()
 printTreeIO = \case
-  Leaf i -> IO.hPutStrLn IO.stderr (show i)
+  Leaf i -> printStdErr i
   Branch t1 t2 -> do
     printTreeIO t1
     printTreeIO t2
 
 printTreeList :: Tree -> IO ()
-printTreeList = Prelude.mapM_ (IO.hPutStrLn IO.stderr . show) . toList
+printTreeList = Prelude.mapM_ printStdErr . toList
   where toList = \case
           Leaf i -> [i]
           Branch t1 t2 -> toList t1 ++ toList t2
 
 printTreeStreaming :: Tree -> IO ()
-printTreeStreaming = Streaming.Prelude.mapM_ (IO.hPutStrLn IO.stderr . show) . toStream
+printTreeStreaming = Streaming.run . toStream
   where toStream = \case
-          Leaf i -> Streaming.Prelude.yield i
+          Leaf i -> lift (printStdErr i)
           Branch t1 t2 -> do
             toStream t1
             toStream t2
 
 printTreeBetterStreaming :: Tree -> IO ()
-printTreeBetterStreaming = Tree.mapM_ (IO.hPutStrLn IO.stderr . show) . toStream
+printTreeBetterStreaming = Tree.run . toStream
   where toStream = \case
-          Leaf i -> Tree.yield i
-          Branch t1 t2 -> toStream t1 >> toStream t2
+          Leaf i -> lift (printStdErr i)
+          Branch t1 t2 -> do
+            toStream t1
+            toStream t2
