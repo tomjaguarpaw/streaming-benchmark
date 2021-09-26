@@ -2,11 +2,14 @@
 
 module Tree where
 
+import           Control.Monad.Trans.Class (lift)
 import qualified System.IO as IO
+
+import qualified Data.Conduit
 import qualified Streaming
 import qualified Streaming.Better
 import qualified Streamly.Prelude
-import           Control.Monad.Trans.Class (lift)
+import qualified Pipes
 
 data Tree = Branch Tree Tree | Leaf Int
 
@@ -50,6 +53,22 @@ printTreeBetterStreaming = Streaming.Better.run . toStream
 
 printTreeStreamly :: Tree -> IO ()
 printTreeStreamly = Streamly.Prelude.drain . toStream
+  where toStream = \case
+          Leaf i -> lift (printStdErr i)
+          Branch t1 t2 -> do
+            toStream t1
+            toStream t2
+
+printTreePipes :: Tree -> IO ()
+printTreePipes = Pipes.runEffect . toStream
+  where toStream = \case
+          Leaf i -> lift (printStdErr i)
+          Branch t1 t2 -> do
+            toStream t1
+            toStream t2
+
+printTreeConduit :: Tree -> IO ()
+printTreeConduit = Data.Conduit.runConduit . toStream
   where toStream = \case
           Leaf i -> lift (printStdErr i)
           Branch t1 t2 -> do
