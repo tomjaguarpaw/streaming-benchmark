@@ -5,8 +5,7 @@ module Tree where
 import qualified System.IO as IO
 import qualified Streaming
 import qualified Streaming.Better
-import           Control.Monad ((>=>))
-import           Control.Monad.Trans.Class (lift, MonadTrans)
+import           Control.Monad.Trans.Class (lift)
 
 data Tree = Branch Tree Tree | Leaf Int
 
