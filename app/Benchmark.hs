@@ -28,6 +28,7 @@ data Algorithms a = Algorithms
   , aStreaming       :: a
   , aStreamingBetter :: a
   , aIO              :: a
+  , aStreamly        :: a
   }
   deriving (Functor, Foldable, Traversable)
 
@@ -37,12 +38,14 @@ algorithms_ = Algorithms
   , aList            = ("List", Tree.printTreeList, veryBad)
   , aStreamingBetter = ("Streaming better", Tree.printTreeBetterStreaming, good)
   , aIO              = ("IO", Tree.printTreeIO, baseline)
+  , aStreamly        = ("Streamly", Tree.printTreeStreamly, purple)
   }
   where
       veryBad   = "red"
       prettyBad = "orange"
       good      = "web-green"
       baseline  = "web-blue"
+      purple    = "purple"
 
 fast :: BenchmarkParams
 fast = BenchmarkParams

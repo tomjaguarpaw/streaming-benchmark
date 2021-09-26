@@ -5,6 +5,7 @@ module Tree where
 import qualified System.IO as IO
 import qualified Streaming
 import qualified Streaming.Better
+import qualified Streamly.Prelude
 import           Control.Monad.Trans.Class (lift)
 
 data Tree = Branch Tree Tree | Leaf Int
@@ -41,6 +42,14 @@ printTreeStreaming = Streaming.run . toStream
 
 printTreeBetterStreaming :: Tree -> IO ()
 printTreeBetterStreaming = Streaming.Better.run . toStream
+  where toStream = \case
+          Leaf i -> lift (printStdErr i)
+          Branch t1 t2 -> do
+            toStream t1
+            toStream t2
+
+printTreeStreamly :: Tree -> IO ()
+printTreeStreamly = Streamly.Prelude.drain . toStream
   where toStream = \case
           Leaf i -> lift (printStdErr i)
           Branch t1 t2 -> do
