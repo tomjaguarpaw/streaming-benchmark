@@ -50,9 +50,9 @@ algorithms_ = Algorithms
 
 fast :: BenchmarkParams
 fast = BenchmarkParams
-  { runsToMinimizeOver = 3
+  { runsToMinimizeOver = 5
   , minimumMeasurableTime_secs = 0.01
-  , maximumTime_micro = 1000
+  , maximumTime_micro = 1000 * 1000
   , sizeScale = 2
   }
 
@@ -71,7 +71,7 @@ full = BenchmarkParams
 benchmark :: BenchmarkParams -> IO ()
 benchmark bps = do
   benchmarksDir <- createTempDirectory "." "benchmarks"
-  results_genNames <- benchmarkResults 120 bps
+  results_genNames <- benchmarkResults 80 bps
   flip mapM_ results_genNames $ \results' -> do
     datasets <- flip mapM results' $ \((algorithmName, _, algorithmColor), results) -> do
         let textOutput = flip concatMap results $ \(size, time) ->
@@ -109,7 +109,7 @@ benchmarkNoPlot bps algorithms logMaxSize = do
 
   flip mapM (enumFrom1 allParams) $ \(i, algorithm_) -> do
     let (algorithmName, algorithm, _) = algorithm_
-    results <- loop (iteratorOfList [26..logMaxSize]) [] $ \logMaxSize rest -> do
+    results <- loop (iteratorOfList [60..logMaxSize]) [] $ \logMaxSize rest -> do
 
       let size = round (1.1 ** fromIntegral logMaxSize)
 
@@ -197,7 +197,7 @@ stats (n, tsum, tsquaredsum, tmin) = (n, mean, tmin, variance, stddev)
 -- please ask the author.
 benchmarkOne :: Int
              -> Integer
-             -> (e -> r)
+             -> (e -> IO r)
              -> e
              -> IO AggregateStatistics
 benchmarkOne = benchmarkMore (0, 0, 0, infinity)
@@ -206,15 +206,14 @@ benchmarkOne = benchmarkMore (0, 0, 0, infinity)
 benchmarkMore :: AggregateStatistics
               -> Int
               -> Integer
-              -> (e -> r)
+              -> (e -> IO r)
               -> e
               -> IO AggregateStatistics
 benchmarkMore already samplesPerExpression iterationsPerSample algorithm expression =
   times samplesPerExpression already $ \(n, !t, !tsquared, !minSoFar) -> do
         System.Mem.performMajorGC
         start <- Clock.getTime Clock.Monotonic
-        times iterationsPerSample () $ \() ->
-          evaluate algorithm expression
+        times iterationsPerSample () $ \() -> algorithm expression >> pure ()
         stop <- Clock.getTime Clock.Monotonic
 
         let elapsed_micro = iterationsElapsed_micro / fromIntegral iterationsPerSample
@@ -270,6 +269,10 @@ gnuplotFile xlabel results =
           , "set logscale xy 10"
           , "set key left top"
           , "plot " ++ intercalate ", " (fmap plotDataset results)
+                    ++ ", "
+                    ++ intercalate ", "
+                    [ "[x=1e3:] (x/1e3) * 2e-3 title \"x\" at begin lt rgb \"gray\""
+                    , "[x=1e3:] (x/1e3)**2 * 10e-3 title \"x^2\" at begin lt rgb \"gray\"" ]
           ]
 
 data PlotDataset = PlotDataset
