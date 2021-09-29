@@ -14,6 +14,8 @@ import qualified System.Clock as Clock
 import Text.Printf (printf)
 import System.IO.Temp (createTempDirectory, emptyTempFile)
 import qualified System.Mem
+import qualified Streaming.Prelude as S
+import qualified Streaming.Internal as SI
 
 import qualified Tree
 
@@ -298,3 +300,16 @@ iteratorOfList :: Applicative m => [a] -> Iterator m a
 iteratorOfList = \case
   []   -> Iterator (pure Nothing)
   x:xs -> Iterator (pure (Just (x, iteratorOfList xs)))
+
+span :: Functor m
+     => (a -> Maybe b)
+     -> SI.Stream (S.Of a) m r
+     -> SI.Stream (S.Of b) m
+                  (Either (a, SI.Stream (S.Of a) m r) r)
+span thePred = loop' where
+  loop' str = case str of
+    SI.Return r         -> SI.Return (Right r)
+    SI.Effect m          -> SI.Effect $ fmap loop' m
+    SI.Step (a S.:> rest) -> case thePred a of
+      Just b  -> SI.Step (b S.:> loop' rest)
+      Nothing -> SI.Return (Left (a, rest))
