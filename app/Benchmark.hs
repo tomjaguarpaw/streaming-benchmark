@@ -80,7 +80,7 @@ benchmark bps = do
   results_genNames <- benchmarkResults 80 bps
   flip mapM_ results_genNames $ \results' -> do
     datasets <- flip mapM results' $ \((algorithmName, algorithmColor), results) -> do
-        let textOutput = flip concatMap results $ \(size, time) ->
+        textOutput <- S.toList_ $ S.concat $ flip S.map results $ \(size, time) ->
               show size ++ " " ++  show time ++ "\n"
 
         filename <- emptyTempFile benchmarksDir (algorithmName ++ ".dat")
@@ -99,7 +99,7 @@ benchmark bps = do
 
 benchmarkResults :: Int
                  -> BenchmarkParams
-                 -> IO [[((String, String), [(Int, Double)])]]
+                 -> IO [[((String, String), SI.Stream (S.Of (Int, Double)) IO ())]]
 benchmarkResults maxSize bps = do
   let algorithms = Data.Foldable.toList algorithms_
   results <- benchmarkNoPlot bps algorithms maxSize
@@ -108,11 +108,11 @@ benchmarkResults maxSize bps = do
 benchmarkNoPlot :: BenchmarkParams
                 -> [(String, Tree.Tree -> IO (), string)]
                 -> Int
-                -> IO [((String, string), [(Int, Double)])]
+                -> IO [((String, string), S.Stream (S.Of (Int, Double)) IO ())]
 benchmarkNoPlot bps algorithms logMaxSize = do
   flip mapM (enumFrom1 algorithms) $ \(i, algorithm_) -> do
     let (algorithmName, algorithm, algorithmExtra) = algorithm_
-    results <- S.toList_ $ S.map fst $ span1 snd $ S.for (iteratorOfList [60..logMaxSize]) $ \logSize -> do
+    results <- pure $ S.map fst $ span1 snd $ S.for (iteratorOfList [60..logMaxSize]) $ \logSize -> do
 
       let treeSize = round ((1.1 :: Double) ** fromIntegral logSize)
 
