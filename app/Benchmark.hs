@@ -77,14 +77,13 @@ full = BenchmarkParams
 benchmark :: BenchmarkParams -> IO ()
 benchmark bps = do
   benchmarksDir <- createTempDirectory "." "benchmarks"
-  results_genNames <- benchmarkResults 80 bps
-  flip mapM_ results_genNames $ \results' -> do
-    datasets <- flip mapM results' $ \((algorithmName, algorithmColor), results) -> do
-        filename <- emptyTempFile benchmarksDir (algorithmName ++ ".dat")
-        S.writeFile filename $
+  let results'  = benchmarkResults 80 bps
+  datasets <- S.toList_ $ S.for results' $ \((algorithmName, algorithmColor), results) -> do
+        filename <- lift $ emptyTempFile benchmarksDir (algorithmName ++ ".dat")
+        lift $ S.writeFile filename $
           flip S.map results $ \(size, time) -> show size ++ " " ++  show time ++ "\n"
 
-        return PlotDataset
+        S.yield PlotDataset
           { pdFile  = filename
           , pdTitle = algorithmName
           , pdColor = algorithmColor
@@ -92,16 +91,17 @@ benchmark bps = do
           , pdSize  = "0.25"
           }
 
-    makeGnuplot benchmarksDir datasets
+  makeGnuplot benchmarksDir datasets
 
 benchmarkResults :: Int
                  -> BenchmarkParams
-                 -> IO [[((String, String), SI.Stream (S.Of (Int, Double)) IO ())]]
+                 -> SI.Stream
+                       (S.Of ((String, String), SI.Stream (S.Of (Int, Double)) IO ()))
+                       IO
+                       ()
 benchmarkResults maxSize bps = do
   let algorithms = Data.Foldable.toList algorithms_
-  results <- S.toList_ $ benchmarkNoPlot bps algorithms maxSize
-
-  pure [results]
+  benchmarkNoPlot bps algorithms maxSize
 
 benchmarkNoPlot :: BenchmarkParams
                 -> [(String, Tree.Tree -> IO (), string)]
