@@ -9,7 +9,7 @@
 module Benchmark where
 
 import qualified Data.Foldable
-import Data.List (intercalate)
+import Data.List (intercalate,uncons)
 import qualified System.Clock as Clock
 import Text.Printf (printf)
 import System.IO.Temp (createTempDirectory, emptyTempFile)
@@ -290,16 +290,13 @@ loop iterator a f = do
         Left aNext -> loop iteratorNext aNext f
         Right aDone -> pure aDone
 
-newtype Iterator m a = Iterator (m (Maybe (a, Iterator m a)))
-  deriving Functor
+type Iterator m a = S.Stream (S.Of a) m ()
 
-stepIterator :: Iterator m a -> m (Maybe (a, (Iterator m a)))
-stepIterator (Iterator a) = a
+stepIterator :: Monad m => Iterator m a -> m (Maybe (a, (Iterator m a)))
+stepIterator = S.uncons
 
-iteratorOfList :: Applicative m => [a] -> Iterator m a
-iteratorOfList = \case
-  []   -> Iterator (pure Nothing)
-  x:xs -> Iterator (pure (Just (x, iteratorOfList xs)))
+iteratorOfList :: Monad m => [a] -> Iterator m a
+iteratorOfList = S.each
 
 span :: Functor m
      => (a -> Maybe b)
