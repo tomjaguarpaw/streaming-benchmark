@@ -99,9 +99,7 @@ benchmarkResults :: Int
                        (S.Of ((String, String), SI.Stream (S.Of (Int, Double)) IO ()))
                        IO
                        ()
-benchmarkResults maxSize bps = do
-  let algorithms = Data.Foldable.toList algorithms_
-  benchmarkNoPlot bps algorithms maxSize
+benchmarkResults maxSize bps = benchmarkNoPlot bps (Data.Foldable.toList algorithms_) maxSize
 
 benchmarkNoPlot :: BenchmarkParams
                 -> [(String, Tree.Tree -> IO (), string)]
