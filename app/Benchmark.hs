@@ -99,27 +99,29 @@ benchmarkResults :: Int
                        (S.Of ((String, String), SI.Stream (S.Of (Int, Double)) IO ()))
                        IO
                        ()
-benchmarkResults maxSize bps = benchmarkNoPlot bps (Data.Foldable.toList algorithms_) maxSize
+benchmarkResults maxSize bps = benchmarkNoPlot bps (Data.Foldable.toList algorithms_) trees
+  where trees = S.for (S.each [60..maxSize]) $ \logSize -> do
+          let treeSize = round ((1.1 :: Double) ** fromIntegral logSize)
+              -- We force the tree after generating it.  leftSkewed returns a
+              -- fully-evaluated tree, that is forcing it forces everything it
+              -- contains, therefore no time is wasted forcing it in the
+              -- algorithm itself.
+              !tree = Tree.leftSkewed treeSize
+
+          S.yield (tree, treeSize)
 
 benchmarkNoPlot :: BenchmarkParams
                 -> [(String, Tree.Tree -> IO (), string)]
-                -> Int
+                -> S.Stream (S.Of (Tree.Tree, Int)) IO ()
                 -> S.Stream (S.Of ((String, string), S.Stream (S.Of (Int, Double)) IO ())) IO ()
-benchmarkNoPlot bps algorithms logMaxSize = do
+benchmarkNoPlot bps algorithms trees = do
   S.for (S.each (enumFrom1 algorithms)) $ \(i, algorithm_) -> do
     let (algorithmName, algorithm, algorithmExtra) = algorithm_
-    results <- pure $ S.map fst $ span1 snd $ S.for (iteratorOfList [60..logMaxSize]) $ \logSize -> do
-
-      let treeSize = round ((1.1 :: Double) ** fromIntegral logSize)
+    results <- pure $ S.map fst $ span1 snd $ S.for trees $ \(tree, treeSize) -> do
 
       lift $ putStrLn ("Algorithm "
                  ++ show i ++ "/" ++ show (length algorithms)
                  ++ " (" ++ algorithmName ++ ")")
-      -- We force the tree after generating it.  leftSkewed returns a
-      -- fully-evaluated tree, that is forcing it forces everything it
-      -- contains, therefore no time is wasted forcing it in the
-      -- algorithm itself.
-      let !tree = Tree.leftSkewed treeSize
 
       r <- lift $ benchmark' bps algorithm tree
 
@@ -276,12 +278,6 @@ enumFrom1 :: [a] -> [(Int, a)]
 enumFrom1 = zip [1..]
 
 type Iterator m a = S.Stream (S.Of a) m ()
-
-stepIterator :: Monad m => Iterator m a -> m (Maybe (a, (Iterator m a)))
-stepIterator = S.uncons
-
-iteratorOfList :: Monad m => [a] -> Iterator m a
-iteratorOfList = S.each
 
 span :: Functor m
      => (a -> Either b c)
