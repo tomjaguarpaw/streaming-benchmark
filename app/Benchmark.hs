@@ -8,6 +8,7 @@
 
 module Benchmark where
 
+import Streaming (lift)
 import qualified Data.Foldable
 import Data.List (intercalate,uncons)
 import qualified System.Clock as Clock
@@ -111,11 +112,11 @@ benchmarkNoPlot :: BenchmarkParams
 benchmarkNoPlot bps algorithms logMaxSize = do
   flip mapM (enumFrom1 algorithms) $ \(i, algorithm_) -> do
     let (algorithmName, algorithm, algorithmExtra) = algorithm_
-    results <- loop (iteratorOfList [60..logMaxSize]) [] $ \logSize rest -> do
+    results <- S.toList_ $ S.map fst $ span1 snd $ S.for (iteratorOfList [60..logMaxSize]) $ \logSize -> do
 
       let treeSize = round ((1.1 :: Double) ** fromIntegral logSize)
 
-      putStrLn ("Algorithm "
+      lift $ putStrLn ("Algorithm "
                  ++ show i ++ "/" ++ show (length algorithms)
                  ++ " (" ++ algorithmName ++ ")")
       -- We force the tree after generating it.  leftSkewed returns a
@@ -124,21 +125,20 @@ benchmarkNoPlot bps algorithms logMaxSize = do
       -- algorithm itself.
       let !tree = Tree.leftSkewed treeSize
 
-      r <- benchmark' bps algorithm tree
+      r <- lift $ benchmark' bps algorithm tree
 
       let (n, mean_micro, tmin_micro, _, stddev_micro) = stats r
           showFloat = printf "%.0f" :: Double -> String
 
-      putStrLn ("Count: "    ++ show n)
-      putStrLn ("Mean: "     ++ showFloat mean_micro ++ "us")
-      putStrLn ("Min: "      ++ showFloat tmin_micro ++ "us")
-      putStrLn ("Std dev: "  ++ showFloat stddev_micro ++ "us")
+      lift $ putStrLn ("Count: "    ++ show n)
+      lift $ putStrLn ("Mean: "     ++ showFloat mean_micro ++ "us")
+      lift $ putStrLn ("Min: "      ++ showFloat tmin_micro ++ "us")
+      lift $ putStrLn ("Std dev: "  ++ showFloat stddev_micro ++ "us")
 
       let done = tmin_micro > maximumTime_micro bps
           tmin_secs = tmin_micro / (1000 * 1000)
-          rest' = (treeSize, tmin_secs):rest
 
-      pure $ (if done then Right else Left) rest'
+      S.yield ((treeSize, tmin_secs), not done)
 
     pure ((algorithmName, algorithmExtra), results)
 
@@ -278,17 +278,6 @@ times n s f = times_f 0 s
 
 enumFrom1 :: [a] -> [(Int, a)]
 enumFrom1 = zip [1..]
-
-loop :: Monad m => Iterator m b -> a -> (b -> a -> m (Either a a)) -> m a
-loop iterator a f = do
-  mNext <- stepIterator iterator
-  case mNext of
-    Nothing -> pure a
-    Just (b, iteratorNext) -> do
-      ea <- f b a
-      case ea of
-        Left aNext -> loop iteratorNext aNext f
-        Right aDone -> pure aDone
 
 type Iterator m a = S.Stream (S.Of a) m ()
 
