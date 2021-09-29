@@ -122,18 +122,7 @@ benchmarkNoPlot bps algorithms logMaxSize = do
       -- algorithm itself.
       let !tree = Tree.leftSkewed treeSize
 
-      let minimumMeasureableTime_micro = minimumMeasurableTime_secs bps * 1000 * 1000
-
-      (repeats, firstStats) <- benchmarkUntil minimumMeasureableTime_micro
-                                              1
-                                              algorithm
-                                              tree
-
-      r <- benchmarkMore firstStats
-                         (runsToMinimizeOver bps - 1)
-                         repeats
-                         algorithm
-                         tree
+      r <- benchmark' bps algorithm tree
 
       let (n, mean_micro, tmin_micro, _, stddev_micro) = stats r
           showFloat = printf "%.0f" :: Double -> String
@@ -185,6 +174,20 @@ time_nano n f x = do
   times n () $ \() -> f x >> pure ()
   stop <- Clock.getTime Clock.Monotonic
   pure (Clock.toNanoSecs (Clock.diffTimeSpec stop start))
+
+benchmark' :: BenchmarkParams -> (e -> IO r) -> e -> IO AggregateStatistics
+benchmark' bps f x = do
+  let minimumMeasurableTime_micro = minimumMeasurableTime_secs bps * 1000 * 1000
+  (repeats, firstStats) <- benchmarkUntil minimumMeasurableTime_micro
+                                          1
+                                          f
+                                          x
+
+  benchmarkMore firstStats
+                (runsToMinimizeOver bps - 1)
+                repeats
+                f
+                x
 
 benchmarkMore :: AggregateStatistics
               -> Int
