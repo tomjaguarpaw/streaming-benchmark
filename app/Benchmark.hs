@@ -99,15 +99,16 @@ benchmarkResults :: Int
                  -> IO [[((String, String), SI.Stream (S.Of (Int, Double)) IO ())]]
 benchmarkResults maxSize bps = do
   let algorithms = Data.Foldable.toList algorithms_
-  results <- benchmarkNoPlot bps algorithms maxSize
+  results <- S.toList_ $ benchmarkNoPlot bps algorithms maxSize
+
   pure [results]
 
 benchmarkNoPlot :: BenchmarkParams
                 -> [(String, Tree.Tree -> IO (), string)]
                 -> Int
-                -> IO [((String, string), S.Stream (S.Of (Int, Double)) IO ())]
+                -> S.Stream (S.Of ((String, string), S.Stream (S.Of (Int, Double)) IO ())) IO ()
 benchmarkNoPlot bps algorithms logMaxSize = do
-  flip mapM (enumFrom1 algorithms) $ \(i, algorithm_) -> do
+  S.for (S.each (enumFrom1 algorithms)) $ \(i, algorithm_) -> do
     let (algorithmName, algorithm, algorithmExtra) = algorithm_
     results <- pure $ S.map fst $ span1 snd $ S.for (iteratorOfList [60..logMaxSize]) $ \logSize -> do
 
@@ -137,7 +138,7 @@ benchmarkNoPlot bps algorithms logMaxSize = do
 
       S.yield ((treeSize, tmin_secs), not done)
 
-    pure ((algorithmName, algorithmExtra), results)
+    S.yield ((algorithmName, algorithmExtra), results)
 
 makeGnuplot :: FilePath -> [PlotDataset] -> IO ()
 makeGnuplot benchmarksDir results = do
