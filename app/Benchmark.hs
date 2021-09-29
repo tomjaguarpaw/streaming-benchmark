@@ -299,14 +299,14 @@ iteratorOfList :: Monad m => [a] -> Iterator m a
 iteratorOfList = S.each
 
 span :: Functor m
-     => (a -> Maybe b)
+     => (a -> Either b c)
      -> SI.Stream (S.Of a) m r
      -> SI.Stream (S.Of b) m
-                  (Either (a, SI.Stream (S.Of a) m r) r)
+                  (Either (c, SI.Stream (S.Of a) m r) r)
 span thePred = loop' where
   loop' str = case str of
     SI.Return r         -> SI.Return (Right r)
     SI.Effect m          -> SI.Effect $ fmap loop' m
     SI.Step (a S.:> rest) -> case thePred a of
-      Just b  -> SI.Step (b S.:> loop' rest)
-      Nothing -> SI.Return (Left (a, rest))
+      Left b  -> SI.Step (b S.:> loop' rest)
+      Right c -> SI.Return (Left (c, rest))
