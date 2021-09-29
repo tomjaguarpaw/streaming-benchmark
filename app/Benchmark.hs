@@ -310,3 +310,13 @@ span thePred = loop' where
     SI.Step (a S.:> rest) -> case thePred a of
       Left b  -> SI.Step (b S.:> loop' rest)
       Right c -> SI.Return (Left (c, rest))
+
+span1 :: Monad m
+      => (a -> Bool)
+      -> SI.Stream (S.Of a) m ()
+      -> SI.Stream (S.Of a) m ()
+span1 thePred str = do
+  e <- Benchmark.span (\a -> if thePred a then Left a else Right a) str
+  case e of
+    Right r -> pure r
+    Left (a, _) -> S.yield a
