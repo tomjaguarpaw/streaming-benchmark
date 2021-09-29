@@ -80,12 +80,9 @@ benchmark bps = do
   results_genNames <- benchmarkResults 80 bps
   flip mapM_ results_genNames $ \results' -> do
     datasets <- flip mapM results' $ \((algorithmName, algorithmColor), results) -> do
-        textOutput <- S.toList_ $ S.concat $ flip S.map results $ \(size, time) ->
-              show size ++ " " ++  show time ++ "\n"
-
         filename <- emptyTempFile benchmarksDir (algorithmName ++ ".dat")
-
-        writeFile filename textOutput
+        S.writeFile filename $
+          flip S.map results $ \(size, time) -> show size ++ " " ++  show time ++ "\n"
 
         return PlotDataset
           { pdFile  = filename
