@@ -9,6 +9,7 @@ import qualified System.IO as IO
 import qualified Data.Conduit
 import qualified Streaming
 import qualified Streaming.Better
+import qualified Streaming.Codensity
 import qualified Streamly.Prelude
 import qualified Pipes
 
@@ -51,6 +52,9 @@ printTreeStreaming = Streaming.run . printTreeTransformer
 
 printTreeBetterStreaming :: Tree -> IO ()
 printTreeBetterStreaming = Streaming.Better.run . printTreeTransformer
+
+printTreeStreamingCodensity :: Tree -> IO ()
+printTreeStreamingCodensity = Streaming.Codensity.run . printTreeTransformer
 
 printTreeStreamly :: Tree -> IO ()
 printTreeStreamly = Streamly.Prelude.drain . printTreeTransformer

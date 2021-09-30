@@ -27,27 +27,29 @@ data BenchmarkParams = BenchmarkParams
   }
 
 data Algorithms a = Algorithms
-  { aPipes           :: a
-  , aConduit         :: a
-  , aList            :: a
-  , aStreaming       :: a
-  , aStreamly        :: a
-  , aStreamingBetter :: a
-  , aIdentityT       :: a
-  , aIO              :: a
+  { aPipes              :: a
+  , aConduit            :: a
+  , aList               :: a
+  , aStreaming          :: a
+  , aStreamly           :: a
+  , aStreamingBetter    :: a
+  , aStreamingCodensity :: a
+  , aIdentityT          :: a
+  , aIO                 :: a
   }
   deriving (Functor, Foldable, Traversable)
 
 algorithms_ :: Algorithms (String, Tree.Tree -> IO (), String)
 algorithms_ = Algorithms
-  { aStreaming       = ("Streaming", Tree.printTreeStreaming, prettyBad)
-  , aList            = ("List", Tree.printTreeList, veryBad)
-  , aStreamingBetter = ("Streaming better", Tree.printTreeBetterStreaming, good)
-  , aIO              = ("IO", Tree.printTreeIO, baseline)
-  , aStreamly        = ("Streamly", Tree.printTreeStreamly, purple)
-  , aPipes           = ("Pipes", Tree.printTreePipes, cyan)
-  , aConduit         = ("Conduit", Tree.printTreePipes, magenta)
-  , aIdentityT       = ("IdentityT", Tree.printTreeIdentityT, good)
+  { aStreaming          = ("Streaming", Tree.printTreeStreaming, prettyBad)
+  , aList               = ("List", Tree.printTreeList, veryBad)
+  , aStreamingBetter    = ("Streaming better", Tree.printTreeBetterStreaming, good)
+  , aStreamingCodensity = ("Streaming codensity", Tree.printTreeStreamingCodensity, good)
+  , aIO                 = ("IO", Tree.printTreeIO, baseline)
+  , aStreamly           = ("Streamly", Tree.printTreeStreamly, purple)
+  , aPipes              = ("Pipes", Tree.printTreePipes, cyan)
+  , aConduit            = ("Conduit", Tree.printTreePipes, magenta)
+  , aIdentityT          = ("IdentityT", Tree.printTreeIdentityT, good)
   }
   where
       veryBad   = "red"
