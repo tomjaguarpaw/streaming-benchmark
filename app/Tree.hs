@@ -2,7 +2,8 @@
 
 module Tree where
 
-import           Control.Monad.Trans.Class (lift)
+import           Control.Monad.Trans.Class (lift, MonadTrans)
+import           Control.Monad.Trans.Identity (runIdentityT)
 import qualified System.IO as IO
 
 import qualified Data.Conduit
@@ -35,42 +36,27 @@ printTreeList = Prelude.mapM_ printStdErr . toList
           Leaf i -> [i]
           Branch t1 t2 -> toList t1 ++ toList t2
 
+printTreeTransformer :: (Monad (m IO), MonadTrans m) => Tree -> m IO ()
+printTreeTransformer = \case
+  Leaf i -> lift (printStdErr i)
+  Branch t1 t2 -> do
+    printTreeTransformer t1
+    printTreeTransformer t2
+
+printTreeIdentityT :: Tree -> IO ()
+printTreeIdentityT = runIdentityT . printTreeTransformer
+
 printTreeStreaming :: Tree -> IO ()
-printTreeStreaming = Streaming.run . toStream
-  where toStream = \case
-          Leaf i -> lift (printStdErr i)
-          Branch t1 t2 -> do
-            toStream t1
-            toStream t2
+printTreeStreaming = Streaming.run . printTreeTransformer
 
 printTreeBetterStreaming :: Tree -> IO ()
-printTreeBetterStreaming = Streaming.Better.run . toStream
-  where toStream = \case
-          Leaf i -> lift (printStdErr i)
-          Branch t1 t2 -> do
-            toStream t1
-            toStream t2
+printTreeBetterStreaming = Streaming.Better.run . printTreeTransformer
 
 printTreeStreamly :: Tree -> IO ()
-printTreeStreamly = Streamly.Prelude.drain . toStream
-  where toStream = \case
-          Leaf i -> lift (printStdErr i)
-          Branch t1 t2 -> do
-            toStream t1
-            toStream t2
+printTreeStreamly = Streamly.Prelude.drain . printTreeTransformer
 
 printTreePipes :: Tree -> IO ()
-printTreePipes = Pipes.runEffect . toStream
-  where toStream = \case
-          Leaf i -> lift (printStdErr i)
-          Branch t1 t2 -> do
-            toStream t1
-            toStream t2
+printTreePipes = Pipes.runEffect . printTreeTransformer
 
 printTreeConduit :: Tree -> IO ()
-printTreeConduit = Data.Conduit.runConduit . toStream
-  where toStream = \case
-          Leaf i -> lift (printStdErr i)
-          Branch t1 t2 -> do
-            toStream t1
-            toStream t2
+printTreeConduit = Data.Conduit.runConduit . printTreeTransformer

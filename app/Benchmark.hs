@@ -33,6 +33,7 @@ data Algorithms a = Algorithms
   , aStreaming       :: a
   , aStreamly        :: a
   , aStreamingBetter :: a
+  , aIdentityT       :: a
   , aIO              :: a
   }
   deriving (Functor, Foldable, Traversable)
@@ -46,6 +47,7 @@ algorithms_ = Algorithms
   , aStreamly        = ("Streamly", Tree.printTreeStreamly, purple)
   , aPipes           = ("Pipes", Tree.printTreePipes, cyan)
   , aConduit         = ("Conduit", Tree.printTreePipes, magenta)
+  , aIdentityT       = ("IdentityT", Tree.printTreeIdentityT, good)
   }
   where
       veryBad   = "red"
