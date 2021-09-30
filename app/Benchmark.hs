@@ -250,7 +250,7 @@ gnuplotFile results =
           , "set format x '%.0se%S'"
 --          , "set size 1,1"
           , "set logscale xy 10"
-          , "set key left top"
+          , "set key outside right"
           , "plot " ++ intercalate ", " (fmap plotDataset results)
                     ++ ", "
                     ++ intercalate ", "
