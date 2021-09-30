@@ -25,44 +25,44 @@ leftSkewed :: Int -> Tree
 leftSkewed 0 = Leaf 0
 leftSkewed n = (Branch $! leftSkewed (n - 1)) (Leaf n)
 
-printTreeIO :: IORef Int -> Tree -> IO ()
-printTreeIO r = \case
+walkTreeIO :: IORef Int -> Tree -> IO ()
+walkTreeIO r = \case
   Leaf i -> writeIORef r i
   Branch t1 t2 -> do
-    printTreeIO r t1
-    printTreeIO r t2
+    walkTreeIO r t1
+    walkTreeIO r t2
 
-printTreeList :: IORef Int -> Tree -> IO ()
-printTreeList r = Prelude.mapM_ (writeIORef r) . toList
+walkTreeList :: IORef Int -> Tree -> IO ()
+walkTreeList r = Prelude.mapM_ (writeIORef r) . toList
   where toList = \case
           Leaf i -> [i]
           Branch t1 t2 -> toList t1 ++ toList t2
 
-printTreeTransformer :: (Monad (m IO), MonadTrans m)
+walkTreeTransformer :: (Monad (m IO), MonadTrans m)
                      => IORef Int -> Tree -> m IO ()
-printTreeTransformer r = \case
+walkTreeTransformer r = \case
   Leaf i -> lift (writeIORef r i)
   Branch t1 t2 -> do
-    printTreeTransformer r t1
-    printTreeTransformer r t2
+    walkTreeTransformer r t1
+    walkTreeTransformer r t2
 
-printTreeIdentityT :: IORef Int -> Tree -> IO ()
-printTreeIdentityT r = runIdentityT . printTreeTransformer r
+walkTreeIdentityT :: IORef Int -> Tree -> IO ()
+walkTreeIdentityT r = runIdentityT . walkTreeTransformer r
 
-printTreeStreaming :: IORef Int -> Tree -> IO ()
-printTreeStreaming r = Streaming.run . printTreeTransformer r
+walkTreeStreaming :: IORef Int -> Tree -> IO ()
+walkTreeStreaming r = Streaming.run . walkTreeTransformer r
 
-printTreeBetterStreaming :: IORef Int -> Tree -> IO ()
-printTreeBetterStreaming r = Streaming.Better.run . printTreeTransformer r
+walkTreeBetterStreaming :: IORef Int -> Tree -> IO ()
+walkTreeBetterStreaming r = Streaming.Better.run . walkTreeTransformer r
 
-printTreeStreamingCodensity :: IORef Int -> Tree -> IO ()
-printTreeStreamingCodensity r = Streaming.Codensity.run . printTreeTransformer r
+walkTreeStreamingCodensity :: IORef Int -> Tree -> IO ()
+walkTreeStreamingCodensity r = Streaming.Codensity.run . walkTreeTransformer r
 
-printTreeStreamly :: IORef Int -> Tree -> IO ()
-printTreeStreamly r = Streamly.Prelude.drain . printTreeTransformer r
+walkTreeStreamly :: IORef Int -> Tree -> IO ()
+walkTreeStreamly r = Streamly.Prelude.drain . walkTreeTransformer r
 
-printTreePipes :: IORef Int -> Tree -> IO ()
-printTreePipes r = Pipes.runEffect . printTreeTransformer r
+walkTreePipes :: IORef Int -> Tree -> IO ()
+walkTreePipes r = Pipes.runEffect . walkTreeTransformer r
 
-printTreeConduit :: IORef Int -> Tree -> IO ()
-printTreeConduit r = Data.Conduit.runConduit . printTreeTransformer r
+walkTreeConduit :: IORef Int -> Tree -> IO ()
+walkTreeConduit r = Data.Conduit.runConduit . walkTreeTransformer r

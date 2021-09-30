@@ -42,15 +42,15 @@ data Algorithms a = Algorithms
 
 algorithms_ :: Algorithms (String, IORef Int -> Tree.Tree -> IO (), Maybe String)
 algorithms_ = Algorithms
-  { aStreaming          = ("Streaming", Tree.printTreeStreaming, Just prettyBad)
-  , aList               = ("List", Tree.printTreeList, Just veryBad)
-  , aStreamingBetter    = ("Streaming better", Tree.printTreeBetterStreaming, Nothing)
-  , aStreamingCodensity = ("Streaming codensity", Tree.printTreeStreamingCodensity, Nothing)
-  , aIO                 = ("IO", Tree.printTreeIO, Just baseline)
-  , aStreamly           = ("Streamly", Tree.printTreeStreamly, Just purple)
-  , aPipes              = ("Pipes", Tree.printTreePipes, Just cyan)
-  , aConduit            = ("Conduit", Tree.printTreePipes, Just magenta)
-  , aIdentityT          = ("IdentityT", Tree.printTreeIdentityT, Nothing)
+  { aStreaming          = ("Streaming", Tree.walkTreeStreaming, Just prettyBad)
+  , aList               = ("List", Tree.walkTreeList, Just veryBad)
+  , aStreamingBetter    = ("Streaming better", Tree.walkTreeBetterStreaming, Nothing)
+  , aStreamingCodensity = ("Streaming codensity", Tree.walkTreeStreamingCodensity, Nothing)
+  , aIO                 = ("IO", Tree.walkTreeIO, Just baseline)
+  , aStreamly           = ("Streamly", Tree.walkTreeStreamly, Just purple)
+  , aPipes              = ("Pipes", Tree.walkTreePipes, Just cyan)
+  , aConduit            = ("Conduit", Tree.walkTreePipes, Just magenta)
+  , aIdentityT          = ("IdentityT", Tree.walkTreeIdentityT, Nothing)
   }
   where
       veryBad   = "red"
