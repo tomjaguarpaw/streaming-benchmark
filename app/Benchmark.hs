@@ -40,17 +40,17 @@ data Algorithms a = Algorithms
   }
   deriving (Functor, Foldable, Traversable)
 
-algorithms_ :: Algorithms (String, IORef Int -> Tree.Tree -> IO (), String)
+algorithms_ :: Algorithms (String, IORef Int -> Tree.Tree -> IO (), Maybe String)
 algorithms_ = Algorithms
-  { aStreaming          = ("Streaming", Tree.printTreeStreaming, prettyBad)
-  , aList               = ("List", Tree.printTreeList, veryBad)
-  , aStreamingBetter    = ("Streaming better", Tree.printTreeBetterStreaming, good)
-  , aStreamingCodensity = ("Streaming codensity", Tree.printTreeStreamingCodensity, good)
-  , aIO                 = ("IO", Tree.printTreeIO, baseline)
-  , aStreamly           = ("Streamly", Tree.printTreeStreamly, purple)
-  , aPipes              = ("Pipes", Tree.printTreePipes, cyan)
-  , aConduit            = ("Conduit", Tree.printTreePipes, magenta)
-  , aIdentityT          = ("IdentityT", Tree.printTreeIdentityT, good)
+  { aStreaming          = ("Streaming", Tree.printTreeStreaming, Just prettyBad)
+  , aList               = ("List", Tree.printTreeList, Just veryBad)
+  , aStreamingBetter    = ("Streaming better", Tree.printTreeBetterStreaming, Nothing)
+  , aStreamingCodensity = ("Streaming codensity", Tree.printTreeStreamingCodensity, Nothing)
+  , aIO                 = ("IO", Tree.printTreeIO, Just baseline)
+  , aStreamly           = ("Streamly", Tree.printTreeStreamly, Just purple)
+  , aPipes              = ("Pipes", Tree.printTreePipes, Just cyan)
+  , aConduit            = ("Conduit", Tree.printTreePipes, Just magenta)
+  , aIdentityT          = ("IdentityT", Tree.printTreeIdentityT, Nothing)
   }
   where
       veryBad   = "red"
@@ -103,7 +103,7 @@ benchmarkResults :: Int
                  -> BenchmarkParams
                  -> IORef Int
                  -> SI.Stream
-                       (S.Of ((String, String), SI.Stream (S.Of (Int, Double)) IO ()))
+                       (S.Of ((String, Maybe String), SI.Stream (S.Of (Int, Double)) IO ()))
                        IO
                        ()
 benchmarkResults maxSize bps r = benchmarkNoPlot bps (Data.Foldable.toList algorithms) trees
@@ -254,14 +254,14 @@ gnuplotFile results =
           , "plot " ++ intercalate ", " (fmap plotDataset results)
                     ++ ", "
                     ++ intercalate ", "
-                    [ "[x=1e3:] (x/1e3) * 100e-6 title \"x\" at begin lt rgb \"gray\""
-                    , "[x=1e3:] (x/1e3)**2 * 1e-3 title \"x^2\" at begin lt rgb \"gray\"" ]
+                    [ "[x=1e3:] (x/1e3) * 100e-6 title \"O(n)\" at begin lt rgb \"gray\""
+                    , "[x=1e3:] (x/1e3)**2 * 1e-3 title \"O(n^2)\" at begin lt rgb \"gray\"" ]
           ]
 
 data PlotDataset = PlotDataset
   { pdFile  :: String
   , pdTitle :: String
-  , pdColor :: String
+  , pdColor :: Maybe String
   , pdStyle :: String
   , pdSize  :: String
   }
@@ -269,7 +269,7 @@ data PlotDataset = PlotDataset
 plotDataset :: PlotDataset -> String
 plotDataset pd = intercalate " " [ quote (pdFile pd)
                                  , "title " ++ quote (pdTitle pd)
-                                 , "lt rgb " ++ quote (pdColor pd)
+                                 , maybe "" (\color -> "lt rgb " ++ quote color) (pdColor pd)
                                  , "pt " ++ pdStyle pd
                                  , "ps " ++ pdSize pd ]
   where quote s = "\"" ++ s ++ "\""
