@@ -4,6 +4,7 @@ module Tree where
 
 import           Control.Monad.Trans.Class (lift, MonadTrans)
 import           Control.Monad.Trans.Identity (runIdentityT)
+import           Data.IORef (writeIORef, IORef)
 import qualified System.IO as IO
 
 import qualified Data.Conduit
@@ -24,43 +25,44 @@ leftSkewed :: Int -> Tree
 leftSkewed 0 = Leaf 0
 leftSkewed n = (Branch $! leftSkewed (n - 1)) (Leaf n)
 
-printTreeIO :: Tree -> IO ()
-printTreeIO = \case
-  Leaf i -> printStdErr i
+printTreeIO :: IORef Int -> Tree -> IO ()
+printTreeIO r = \case
+  Leaf i -> writeIORef r i
   Branch t1 t2 -> do
-    printTreeIO t1
-    printTreeIO t2
+    printTreeIO r t1
+    printTreeIO r t2
 
-printTreeList :: Tree -> IO ()
-printTreeList = Prelude.mapM_ printStdErr . toList
+printTreeList :: IORef Int -> Tree -> IO ()
+printTreeList r = Prelude.mapM_ (writeIORef r) . toList
   where toList = \case
           Leaf i -> [i]
           Branch t1 t2 -> toList t1 ++ toList t2
 
-printTreeTransformer :: (Monad (m IO), MonadTrans m) => Tree -> m IO ()
-printTreeTransformer = \case
-  Leaf i -> lift (printStdErr i)
+printTreeTransformer :: (Monad (m IO), MonadTrans m)
+                     => IORef Int -> Tree -> m IO ()
+printTreeTransformer r = \case
+  Leaf i -> lift (writeIORef r i)
   Branch t1 t2 -> do
-    printTreeTransformer t1
-    printTreeTransformer t2
+    printTreeTransformer r t1
+    printTreeTransformer r t2
 
-printTreeIdentityT :: Tree -> IO ()
-printTreeIdentityT = runIdentityT . printTreeTransformer
+printTreeIdentityT :: IORef Int -> Tree -> IO ()
+printTreeIdentityT r = runIdentityT . printTreeTransformer r
 
-printTreeStreaming :: Tree -> IO ()
-printTreeStreaming = Streaming.run . printTreeTransformer
+printTreeStreaming :: IORef Int -> Tree -> IO ()
+printTreeStreaming r = Streaming.run . printTreeTransformer r
 
-printTreeBetterStreaming :: Tree -> IO ()
-printTreeBetterStreaming = Streaming.Better.run . printTreeTransformer
+printTreeBetterStreaming :: IORef Int -> Tree -> IO ()
+printTreeBetterStreaming r = Streaming.Better.run . printTreeTransformer r
 
-printTreeStreamingCodensity :: Tree -> IO ()
-printTreeStreamingCodensity = Streaming.Codensity.run . printTreeTransformer
+printTreeStreamingCodensity :: IORef Int -> Tree -> IO ()
+printTreeStreamingCodensity r = Streaming.Codensity.run . printTreeTransformer r
 
-printTreeStreamly :: Tree -> IO ()
-printTreeStreamly = Streamly.Prelude.drain . printTreeTransformer
+printTreeStreamly :: IORef Int -> Tree -> IO ()
+printTreeStreamly r = Streamly.Prelude.drain . printTreeTransformer r
 
-printTreePipes :: Tree -> IO ()
-printTreePipes = Pipes.runEffect . printTreeTransformer
+printTreePipes :: IORef Int -> Tree -> IO ()
+printTreePipes r = Pipes.runEffect . printTreeTransformer r
 
-printTreeConduit :: Tree -> IO ()
-printTreeConduit = Data.Conduit.runConduit . printTreeTransformer
+printTreeConduit :: IORef Int -> Tree -> IO ()
+printTreeConduit r = Data.Conduit.runConduit . printTreeTransformer r

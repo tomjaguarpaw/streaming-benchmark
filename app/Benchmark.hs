@@ -11,6 +11,7 @@ module Benchmark where
 import Streaming (lift)
 import qualified Data.Foldable
 import Data.List (intercalate)
+import Data.IORef (IORef, newIORef)
 import qualified System.Clock as Clock
 import Text.Printf (printf)
 import System.IO.Temp (createTempDirectory, emptyTempFile)
@@ -39,7 +40,7 @@ data Algorithms a = Algorithms
   }
   deriving (Functor, Foldable, Traversable)
 
-algorithms_ :: Algorithms (String, Tree.Tree -> IO (), String)
+algorithms_ :: Algorithms (String, IORef Int -> Tree.Tree -> IO (), String)
 algorithms_ = Algorithms
   { aStreaming          = ("Streaming", Tree.printTreeStreaming, prettyBad)
   , aList               = ("List", Tree.printTreeList, veryBad)
@@ -81,7 +82,8 @@ full = BenchmarkParams
 benchmark :: BenchmarkParams -> IO ()
 benchmark bps = do
   benchmarksDir <- createTempDirectory "." "benchmarks"
-  let results'  = benchmarkResults 80 bps
+  r <- newIORef (error "Shouldn't read from this IORef")
+  let results'  = benchmarkResults 80 bps r
   datasets <- S.toList_ $ S.for results' $ \((algorithmName, algorithmColor), results) -> do
         filename <- lift $ emptyTempFile benchmarksDir (algorithmName ++ ".dat")
         lift $ S.writeFile filename $
@@ -99,11 +101,12 @@ benchmark bps = do
 
 benchmarkResults :: Int
                  -> BenchmarkParams
+                 -> IORef Int
                  -> SI.Stream
                        (S.Of ((String, String), SI.Stream (S.Of (Int, Double)) IO ()))
                        IO
                        ()
-benchmarkResults maxSize bps = benchmarkNoPlot bps (Data.Foldable.toList algorithms_) trees
+benchmarkResults maxSize bps r = benchmarkNoPlot bps (Data.Foldable.toList algorithms) trees
   where trees = S.for (S.each [60..maxSize]) $ \logSize -> do
           let treeSize = round ((1.1 :: Double) ** fromIntegral logSize)
               -- We force the tree after generating it.  leftSkewed returns a
@@ -113,6 +116,8 @@ benchmarkResults maxSize bps = benchmarkNoPlot bps (Data.Foldable.toList algorit
               !tree = Tree.leftSkewed treeSize
 
           S.yield (tree, treeSize)
+
+        algorithms = flip fmap algorithms_ $ \(a, f, b) -> (a, f r, b)
 
 benchmarkNoPlot :: BenchmarkParams
                 -> [(String, Tree.Tree -> IO (), string)]
@@ -249,8 +254,8 @@ gnuplotFile results =
           , "plot " ++ intercalate ", " (fmap plotDataset results)
                     ++ ", "
                     ++ intercalate ", "
-                    [ "[x=1e3:] (x/1e3) * 2e-3 title \"x\" at begin lt rgb \"gray\""
-                    , "[x=1e3:] (x/1e3)**2 * 10e-3 title \"x^2\" at begin lt rgb \"gray\"" ]
+                    [ "[x=1e3:] (x/1e3) * 100e-6 title \"x\" at begin lt rgb \"gray\""
+                    , "[x=1e3:] (x/1e3)**2 * 1e-3 title \"x^2\" at begin lt rgb \"gray\"" ]
           ]
 
 data PlotDataset = PlotDataset
