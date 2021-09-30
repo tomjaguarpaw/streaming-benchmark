@@ -30,8 +30,8 @@ data BenchmarkParams = BenchmarkParams
 data Algorithms a = Algorithms
   { aPipes              :: a
   , aConduit            :: a
-  , aList               :: a
   , aStreaming          :: a
+  , aList               :: a
   , aStreamly           :: a
   , aStreamingBetter    :: a
   , aStreamingCodensity :: a
@@ -55,7 +55,6 @@ algorithms_ = Algorithms
   where
       veryBad   = "red"
       prettyBad = "orange"
-      good      = "web-green"
       baseline  = "web-blue"
       purple    = "purple"
       cyan      = "cyan"
@@ -244,8 +243,8 @@ gnuplotFilePdf benchmarksDir results = (outputPdf, unlines [
 
 gnuplotFile :: [PlotDataset] -> String
 gnuplotFile results =
-  unlines [ "set xlabel \"Number of nodes in tree\""
-          , "set ylabel \"Time taken to print tree (s)"
+  unlines [ "set xlabel \"Size of left-skewed tree\""
+          , "set ylabel \"Time taken to act at every leaf (s)"
           , "set format y '%.0se%S'"
           , "set format x '%.0se%S'"
 --          , "set size 1,1"
