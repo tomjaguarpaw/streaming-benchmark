@@ -10,7 +10,7 @@ module Benchmark where
 
 import Streaming (lift)
 import qualified Data.Foldable
-import Data.List (intercalate,uncons)
+import Data.List (intercalate)
 import qualified System.Clock as Clock
 import Text.Printf (printf)
 import System.IO.Temp (createTempDirectory, emptyTempFile)
