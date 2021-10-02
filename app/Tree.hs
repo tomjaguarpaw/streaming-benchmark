@@ -16,10 +16,6 @@ import qualified Pipes
 
 data Tree = Branch Tree Tree | Leaf Int
 
-
-printStdErr :: Show a => a -> IO ()
-printStdErr = IO.hPutStrLn IO.stderr . show
-
 -- Fully evaluated left-skewed tree
 leftSkewed :: Int -> Tree
 leftSkewed 0 = Leaf 0
