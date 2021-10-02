@@ -1,7 +1,7 @@
 {-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE DeriveFunctor #-}
 
-module Streaming.Better where
+module Streaming.Bind where
 
 import           Control.Monad ((>=>))
 import           Control.Monad.Trans.Class (lift, MonadTrans)

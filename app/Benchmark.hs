@@ -33,7 +33,7 @@ data Algorithms a = Algorithms
   , aStreaming          :: a
   , aList               :: a
   , aStreamly           :: a
-  , aStreamingBetter    :: a
+  , aStreamingBind      :: a
   , aStreamingCodensity :: a
   , aIdentityT          :: a
   , aIO                 :: a
@@ -45,7 +45,7 @@ algorithms_ = Algorithms
   { aStreaming          = ("Streaming", Tree.walkTreeStreaming, Just prettyBad)
   , aList               = ("List", Tree.walkTreeList, Nothing)
   , aStreamingCodensity = ("Streaming codensity", Tree.walkTreeStreamingCodensity, Nothing)
-  , aStreamingBetter    = ("Streaming bind", Tree.walkTreeBetterStreaming, Nothing)
+  , aStreamingBind      = ("Streaming bind", Tree.walkTreeBindStreaming, Nothing)
   , aIO                 = ("IO", Tree.walkTreeIO, Just baseline)
   , aStreamly           = ("Streamly", Tree.walkTreeStreamly, Just purple)
   , aPipes              = ("Pipes", Tree.walkTreePipes, Just cyan)

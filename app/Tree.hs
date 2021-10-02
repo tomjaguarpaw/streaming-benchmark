@@ -7,7 +7,7 @@ import           Control.Monad.Trans.Identity (runIdentityT)
 
 import qualified Data.Conduit
 import qualified Streaming
-import qualified Streaming.Better
+import qualified Streaming.Bind
 import qualified Streaming.Codensity
 import qualified Streamly.Prelude
 import qualified Pipes
@@ -48,8 +48,8 @@ walkTreeIdentityT doSomething = runIdentityT . walkTreeTransformer doSomething
 walkTreeStreaming :: (Int -> IO ()) -> Tree -> IO ()
 walkTreeStreaming doSomething = Streaming.run . walkTreeTransformer doSomething
 
-walkTreeBetterStreaming :: (Int -> IO ()) -> Tree -> IO ()
-walkTreeBetterStreaming doSomething = Streaming.Better.run . walkTreeTransformer doSomething
+walkTreeBindStreaming :: (Int -> IO ()) -> Tree -> IO ()
+walkTreeBindStreaming doSomething = Streaming.Bind.run . walkTreeTransformer doSomething
 
 walkTreeStreamingCodensity :: (Int -> IO ()) -> Tree -> IO ()
 walkTreeStreamingCodensity doSomething = Streaming.Codensity.run . walkTreeTransformer doSomething
