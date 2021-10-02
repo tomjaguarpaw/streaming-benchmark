@@ -34,7 +34,7 @@ walkTreeList doSomething = Prelude.mapM_ doSomething . toList
           Branch t1 t2 -> toList t1 ++ toList t2
 
 walkTreeTransformer :: (Monad (m IO), MonadTrans m)
-                     => (Int -> IO ()) -> Tree -> m IO ()
+                    => (Int -> IO ()) -> Tree -> m IO ()
 walkTreeTransformer doSomething = loop
   where loop = \case
           Leaf i -> lift (doSomething i)
