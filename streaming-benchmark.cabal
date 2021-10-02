@@ -1,10 +1,18 @@
 cabal-version:      2.4
-name:               tmp-streaming
+name:               streaming-benchmark
 version:            0
 
 executable tmp-streaming
     main-is:          Main.hs
-    build-depends:    base ^>=4.14.3.0, clock, streaming, temporary, transformers, streamly, pipes, conduit, kan-extensions
+    build-depends:    base,
+                      clock,
+                      streaming == 0.2.3.0,
+                      temporary,
+                      transformers,
+                      streamly == 0.8.0,
+                      pipes == 4.3.16,
+                      conduit == 1.3.4.2,
+                      kan-extensions
     hs-source-dirs:   app
     other-modules:    Benchmark, Tree, Streaming.Better, Streaming.Codensity
     default-language: Haskell2010
