@@ -11,7 +11,7 @@ module Benchmark where
 import Streaming (lift)
 import qualified Data.Foldable
 import Data.List (intercalate)
-import Data.IORef (IORef, newIORef)
+import Data.IORef (newIORef, writeIORef)
 import qualified System.Clock as Clock
 import Text.Printf (printf)
 import System.IO.Temp (createTempDirectory, emptyTempFile)
@@ -40,12 +40,12 @@ data Algorithms a = Algorithms
   }
   deriving (Functor, Foldable, Traversable)
 
-algorithms_ :: Algorithms (String, IORef Int -> Tree.Tree -> IO (), Maybe String)
+algorithms_ :: Algorithms (String, (Int -> IO ()) -> Tree.Tree -> IO (), Maybe String)
 algorithms_ = Algorithms
   { aStreaming          = ("Streaming", Tree.walkTreeStreaming, Just prettyBad)
-  , aList               = ("List", Tree.walkTreeList, Just veryBad)
-  , aStreamingBetter    = ("Streaming better", Tree.walkTreeBetterStreaming, Nothing)
+  , aList               = ("List", Tree.walkTreeList, Nothing)
   , aStreamingCodensity = ("Streaming codensity", Tree.walkTreeStreamingCodensity, Nothing)
+  , aStreamingBetter    = ("Streaming better", Tree.walkTreeBetterStreaming, Nothing)
   , aIO                 = ("IO", Tree.walkTreeIO, Just baseline)
   , aStreamly           = ("Streamly", Tree.walkTreeStreamly, Just purple)
   , aPipes              = ("Pipes", Tree.walkTreePipes, Just cyan)
@@ -53,7 +53,6 @@ algorithms_ = Algorithms
   , aIdentityT          = ("IdentityT", Tree.walkTreeIdentityT, Nothing)
   }
   where
-      veryBad   = "red"
       prettyBad = "orange"
       baseline  = "web-blue"
       purple    = "purple"
@@ -82,7 +81,7 @@ benchmark :: BenchmarkParams -> IO ()
 benchmark bps = do
   benchmarksDir <- createTempDirectory "." "benchmarks"
   r <- newIORef (error "Shouldn't read from this IORef")
-  let results'  = benchmarkResults 80 bps r
+  let results'  = benchmarkResults 80 bps (writeIORef r)
   datasets <- S.toList_ $ S.for results' $ \((algorithmName, algorithmColor), results) -> do
         filename <- lift $ emptyTempFile benchmarksDir (algorithmName ++ ".dat")
         lift $ S.writeFile filename $
@@ -100,7 +99,7 @@ benchmark bps = do
 
 benchmarkResults :: Int
                  -> BenchmarkParams
-                 -> IORef Int
+                 -> (Int -> IO ())
                  -> SI.Stream
                        (S.Of ((String, Maybe String), SI.Stream (S.Of (Int, Double)) IO ()))
                        IO
@@ -253,7 +252,7 @@ gnuplotFile results =
           , "plot " ++ intercalate ", " (fmap plotDataset results)
                     ++ ", "
                     ++ intercalate ", "
-                    [ "[x=1e3:] (x/1e3) * 100e-6 title \"O(n)\" at begin lt rgb \"gray\""
+                    [ "[x=1e3:] (x/1e3) * 200e-6 title \"O(n)\" at begin lt rgb \"gray\""
                     , "[x=1e3:] (x/1e3)**2 * 1e-3 title \"O(n^2)\" at begin lt rgb \"gray\"" ]
           ]
 
