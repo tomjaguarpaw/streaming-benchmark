@@ -29,10 +29,10 @@ data BenchmarkParams = BenchmarkParams
 
 data Algorithms a = Algorithms
   { aPipes              :: a
-  , aConduit            :: a
   , aStreaming          :: a
   , aList               :: a
   , aStreamly           :: a
+  , aConduit            :: a
   , aStreamingBind      :: a
   , aStreamingCodensity :: a
   , aIdentityT          :: a
