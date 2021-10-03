@@ -49,7 +49,7 @@ algorithms_ = Algorithms
   , aIO                 = ("IO", Tree.walkTreeIO, Just baseline)
   , aStreamly           = ("Streamly", Tree.walkTreeStreamly, Just purple)
   , aPipes              = ("Pipes", Tree.walkTreePipes, Just cyan)
-  , aConduit            = ("Conduit", Tree.walkTreePipes, Just magenta)
+  , aConduit            = ("Conduit", Tree.walkTreeConduit, Just magenta)
   , aIdentityT          = ("IdentityT", Tree.walkTreeIdentityT, Nothing)
   }
   where
