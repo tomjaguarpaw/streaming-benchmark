@@ -33,8 +33,8 @@ data Algorithms a = Algorithms
   , aList               :: a
   , aStreamly           :: a
   , aConduit            :: a
-  , aStreamingBind      :: a
   , aStreamingCodensity :: a
+  , aStreamingBind      :: a
   , aIdentityT          :: a
   , aIO                 :: a
   }
